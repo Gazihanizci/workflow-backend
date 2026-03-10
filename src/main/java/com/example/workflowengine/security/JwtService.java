@@ -1,48 +1,65 @@
 package com.example.workflowengine.security;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
-import java.security.Key;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Service
 public class JwtService {
 
-    private final String SECRET = "workflowengineworkflowengineworkflowengine123";
+    private static final String SECRET =
+            "workflowengineworkflowengineworkflowengine1234567890";
 
-    private Key getKey(){
-        return Keys.hmacShaKeyFor(SECRET.getBytes());
+    private static final long ACCESS_TOKEN_EXP = 1000L * 60 * 15;
+    private static final long REFRESH_TOKEN_EXP = 1000L * 60 * 60 * 24 * 7;
+
+    private SecretKey getKey() {
+        return Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateAccessToken(String email){
+    public String generateAccessToken(String email) {
 
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 15))
+                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXP))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String generateRefreshToken(String email){
+    public String generateRefreshToken(String email) {
 
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7))
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXP))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String extractEmail(String token){
-        return Jwts.parserBuilder()
+    public String extractEmail(String token) {
+
+        Claims claims = Jwts.parserBuilder()
                 .setSigningKey(getKey())
                 .build()
                 .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+                .getBody();
+
+        return claims.getSubject();
     }
 
+    public boolean isTokenValid(String token) {
+        try {
+            extractEmail(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }
