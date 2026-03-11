@@ -5,6 +5,7 @@ import com.example.workflowengine.entity.Kullanici;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface KullaniciRepository extends JpaRepository<Kullanici, Long> {
@@ -23,5 +24,5 @@ public interface KullaniciRepository extends JpaRepository<Kullanici, Long> {
         where k.email = :email
     """)
     Optional<KullaniciResponseDTO> kullaniciBilgisi(String email);
-
+    List<Kullanici> findByRolId(Long rolId);
 }
