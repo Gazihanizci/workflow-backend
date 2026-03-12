@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class JwtService {
@@ -23,9 +25,13 @@ public class JwtService {
         return Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateAccessToken(String email) {
+    public String generateAccessToken(Long userId, String email) {
+
+        Map<String,Object> claims = new HashMap<>();
+        claims.put("userId", userId);
 
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXP))
@@ -33,9 +39,13 @@ public class JwtService {
                 .compact();
     }
 
-    public String generateRefreshToken(String email) {
+    public String generateRefreshToken(Long userId, String email) {
+
+        Map<String,Object> claims = new HashMap<>();
+        claims.put("userId", userId);
 
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXP))
@@ -43,20 +53,28 @@ public class JwtService {
                 .compact();
     }
 
-    public String extractEmail(String token) {
+    public Claims extractClaims(String token){
 
-        Claims claims = Jwts.parserBuilder()
+        return Jwts.parserBuilder()
                 .setSigningKey(getKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
+    }
 
-        return claims.getSubject();
+    public String extractEmail(String token){
+
+        return extractClaims(token).getSubject();
+    }
+
+    public Long extractUserId(String token){
+
+        return extractClaims(token).get("userId", Long.class);
     }
 
     public boolean isTokenValid(String token) {
         try {
-            extractEmail(token);
+            extractClaims(token);
             return true;
         } catch (Exception e) {
             return false;

@@ -42,10 +42,20 @@ public class AuthService {
         response.setSuccess(true);
         response.setMessage("Giriş başarılı");
 
-        response.setAccessToken(jwtService.generateAccessToken(user.getEmail()));
-        response.setRefreshToken(jwtService.generateRefreshToken(user.getEmail()));
+        response.setAccessToken(
+                jwtService.generateAccessToken(
+                        user.getId(),
+                        user.getEmail()
+                )
+        );
+
+        response.setRefreshToken(
+                jwtService.generateRefreshToken(
+                        user.getId(),
+                        user.getEmail()
+                )
+        );
 
         return response;
     }
-
 }

@@ -1,5 +1,6 @@
 package com.example.workflowengine.service;
 
+import com.example.workflowengine.dto.KullaniciTalepResponse;
 import com.example.workflowengine.entity.*;
 import com.example.workflowengine.repository.*;
 import org.springframework.stereotype.Service;
@@ -14,17 +15,18 @@ public class WorkflowService {
     private final TaskRepository taskRepository;
     private final KullaniciRepository kullaniciRepository;
     private final IsAkisiAdimRepository adimRepository;
-
+    private final GorevOnayRepository gorevOnayRepository;
     public WorkflowService(
             SurecRepository surecRepository,
             TaskRepository taskRepository,
             KullaniciRepository kullaniciRepository,
-            IsAkisiAdimRepository adimRepository
+            IsAkisiAdimRepository adimRepository, GorevOnayRepository gorevOnayRepository
     ) {
         this.surecRepository = surecRepository;
         this.taskRepository = taskRepository;
         this.kullaniciRepository = kullaniciRepository;
         this.adimRepository = adimRepository;
+        this.gorevOnayRepository = gorevOnayRepository;
     }
 
     // süreç başlat
@@ -96,6 +98,28 @@ public class WorkflowService {
                         "BEKLIYOR"
                 );
     }
+    public void reddet(Long taskId, String yorum){
+
+        Task task = taskRepository.findById(taskId).orElseThrow();
+
+        task.setDurum("RED");
+        taskRepository.save(task);
+
+        Surec surec = surecRepository.findById(task.getSurecId()).orElseThrow();
+        surec.setDurum("REDDEDILDI");
+        surecRepository.save(surec);
+
+        // yorum kaydı
+        GorevOnay onay = new GorevOnay();
+
+        onay.setGorevId(task.getTaskId());
+        onay.setKullaniciId(task.getAtananKullaniciId());
+        onay.setDurum("RED");
+        onay.setYorum(yorum);
+        onay.setTarih(LocalDateTime.now());
+
+        gorevOnayRepository.save(onay);
+    }
 
     // onay
     public void onayla(Long taskId) {
@@ -132,4 +156,9 @@ public class WorkflowService {
 
         taskOlustur(surec, sonrakiAdim);
     }
+    public List<KullaniciTalepResponse> kullaniciTalepleri(Long kullaniciId){
+
+        return taskRepository.kullaniciTalepleri(kullaniciId);
+    }
+
 }
