@@ -7,38 +7,33 @@ import jakarta.persistence.*;
 public class IsTuru {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "is_turu_id")
     private Long isTuruId;
 
-    @Column(name = "is_turu_adi", nullable = false)
+    @Column(name = "is_turu_adi")
     private String isTuruAdi;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "kategori_id")
     private Kategori kategori;
 
+    // EKLENECEK
+    @Column(name = "is_akisi_id")
+    private Long isAkisiId;
+
     public Long getIsTuruId() {
         return isTuruId;
-    }
-
-    public void setIsTuruId(Long isTuruId) {
-        this.isTuruId = isTuruId;
     }
 
     public String getIsTuruAdi() {
         return isTuruAdi;
     }
 
-    public void setIsTuruAdi(String isTuruAdi) {
-        this.isTuruAdi = isTuruAdi;
-    }
-
     public Kategori getKategori() {
         return kategori;
     }
 
-    public void setKategori(Kategori kategori) {
-        this.kategori = kategori;
+    public Long getIsAkisiId() {
+        return isAkisiId;
     }
 }

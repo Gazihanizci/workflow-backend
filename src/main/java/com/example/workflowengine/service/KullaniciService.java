@@ -16,15 +16,16 @@ public class KullaniciService {
     }
 
     public KullaniciResponseDTO currentUser() {
+
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+        if (auth == null || !auth.isAuthenticated()) {
             throw new RuntimeException("Kullanıcı giriş yapmamış");
         }
 
-        String email = auth.getName();
+        Long userId = (Long) auth.getPrincipal();
 
-        return kullaniciRepository.kullaniciBilgisi(email)
+        return kullaniciRepository.kullaniciBilgisiById(userId)
                 .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
     }
 }

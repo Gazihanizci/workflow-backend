@@ -1,5 +1,6 @@
 package com.example.workflowengine.service;
 
+import com.example.workflowengine.dto.GelenTalepResponse;
 import com.example.workflowengine.dto.KullaniciTalepResponse;
 import com.example.workflowengine.entity.*;
 import com.example.workflowengine.repository.*;
@@ -11,17 +12,22 @@ import java.util.List;
 @Service
 public class WorkflowService {
 
+    private final IsAkisiRepository isAkisiRepository;
     private final SurecRepository surecRepository;
     private final TaskRepository taskRepository;
     private final KullaniciRepository kullaniciRepository;
     private final IsAkisiAdimRepository adimRepository;
     private final GorevOnayRepository gorevOnayRepository;
+
     public WorkflowService(
+            IsAkisiRepository isAkisiRepository,
             SurecRepository surecRepository,
             TaskRepository taskRepository,
             KullaniciRepository kullaniciRepository,
-            IsAkisiAdimRepository adimRepository, GorevOnayRepository gorevOnayRepository
+            IsAkisiAdimRepository adimRepository,
+            GorevOnayRepository gorevOnayRepository
     ) {
+        this.isAkisiRepository = isAkisiRepository;
         this.surecRepository = surecRepository;
         this.taskRepository = taskRepository;
         this.kullaniciRepository = kullaniciRepository;
@@ -40,46 +46,64 @@ public class WorkflowService {
 
         surecRepository.save(surec);
 
-        // is akışı id
-        Long isAkisiId = 7L;
+        // workflow bul
+        IsAkisi isAkisi =
+                isAkisiRepository
+                        .findByIsTuruId(isTuruId)
+                        .orElseThrow(() -> new RuntimeException("Workflow bulunamadı"));
 
-        // ilk adım
         IsAkisiAdim ilkAdim =
-                adimRepository.findFirstByIsAkisiIdOrderByAdimSirasiAsc(isAkisiId);
+                adimRepository
+                        .findFirstByIsAkisiIdOrderByAdimSirasiAsc(isAkisi.getId());
+
+        if (ilkAdim == null) {
+            throw new RuntimeException("Workflow adımı yok");
+        }
 
         taskOlustur(surec, ilkAdim);
 
         return surec;
     }
 
-    // task oluştur
+
+    // TASK OLUŞTUR
     private void taskOlustur(Surec surec, IsAkisiAdim adim) {
+        Kullanici baslatan = kullaniciRepository.findById(surec.getBaslatanKullaniciId())
+                .orElseThrow(() -> new RuntimeException("Başlayan kullanıcı bulunamadı"));
 
-        Kullanici baslatan =
-                kullaniciRepository
-                        .findById(surec.getBaslatanKullaniciId())
-                        .orElseThrow();
+        Long hedefKullaniciId = null;
+        Long rolId = adim.getRolId();
+        Long birimId = adim.getBirimId();
 
-        Long hedefKullaniciId;
-
-        if(adim.getAdimSirasi() == 1){
-
-            // ilk onay → talebi açanın yöneticisi
+        // 1. ÖNCELİK: Eğer adım "Birim Yöneticisi" ise (Senin örneğinde rol_id 2 genelde budur)
+        // Ve birim_id null ise, başlatan kişinin kendi yöneticisine gitmeli.
+        if (rolId == 2 && birimId == null) {
             hedefKullaniciId = baslatan.getYoneticiId();
-
-        } else {
-
-            // sonraki onay → bir üst yönetici
-            Kullanici yonetici =
-                    kullaniciRepository
-                            .findById(baslatan.getYoneticiId())
-                            .orElseThrow();
-
-            hedefKullaniciId = yonetici.getYoneticiId();
+            if (hedefKullaniciId == null) {
+                throw new RuntimeException("Kullanıcının hiyerarşik yöneticisi tanımlı değil.");
+            }
+        }
+        // 2. ÖNCELİK: Hem Birim hem Rol doluysa (Örn: IK Birimi - IK Onaycısı)
+        else if (birimId != null && rolId != null) {
+            hedefKullaniciId = kullaniciRepository
+                    .findFirstByRolIdAndBirim_BirimId(rolId, birimId)
+                    .map(Kullanici::getId)
+                    .orElseThrow(() -> new RuntimeException(adim.getAdimAdi() + " için ilgili birimde kullanıcı bulunamadı."));
+        }
+        // 3. ÖNCELİK: Sadece Rol varsa (Örn: Genel Müdür)
+        else if (rolId != null) {
+            hedefKullaniciId = kullaniciRepository
+                    .findFirstByRolId(rolId)
+                    .map(Kullanici::getId)
+                    .orElseThrow(() -> new RuntimeException(adim.getAdimAdi() + " için uygun rol sahibi bulunamadı."));
         }
 
-        Task task = new Task();
+        if (hedefKullaniciId == null) {
+            throw new RuntimeException("Atama yapılacak kullanıcı tespit edilemedi.");
+        }
 
+        // TASK KAYDI
+        Task task = new Task();
         task.setSurecId(surec.getSurecId());
         task.setAdimId(adim.getAdimId());
         task.setAtananKullaniciId(hedefKullaniciId);
@@ -89,27 +113,28 @@ public class WorkflowService {
         taskRepository.save(task);
     }
 
+
     // gelen talepler
-    public List<Task> gelenTalepler(Long kullaniciId) {
-
-        return taskRepository
-                .findByAtananKullaniciIdAndDurum(
-                        kullaniciId,
-                        "BEKLIYOR"
-                );
+    public List<GelenTalepResponse> gelenTalepler(Long kullaniciId) {
+        return taskRepository.findGelenTalepler(kullaniciId);
     }
-    public void reddet(Long taskId, String yorum){
 
-        Task task = taskRepository.findById(taskId).orElseThrow();
+
+    // RED
+    public void reddet(Long taskId, String yorum) {
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task bulunamadı"));
 
         task.setDurum("RED");
         taskRepository.save(task);
 
-        Surec surec = surecRepository.findById(task.getSurecId()).orElseThrow();
+        Surec surec = surecRepository.findById(task.getSurecId())
+                .orElseThrow(() -> new RuntimeException("Süreç bulunamadı"));
+
         surec.setDurum("REDDEDILDI");
         surecRepository.save(surec);
 
-        // yorum kaydı
         GorevOnay onay = new GorevOnay();
 
         onay.setGorevId(task.getTaskId());
@@ -121,28 +146,35 @@ public class WorkflowService {
         gorevOnayRepository.save(onay);
     }
 
-    // onay
+
+    // ONAY
     public void onayla(Long taskId) {
 
-        Task task = taskRepository.findById(taskId).orElseThrow();
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task bulunamadı"));
 
         task.setDurum("ONAYLANDI");
         taskRepository.save(task);
 
         IsAkisiAdim mevcutAdim =
-                adimRepository.findById(task.getAdimId()).orElseThrow();
+                adimRepository
+                        .findById(task.getAdimId())
+                        .orElseThrow(() -> new RuntimeException("Adım bulunamadı"));
 
-        // sonraki adım
         IsAkisiAdim sonrakiAdim =
-                adimRepository.findFirstByIsAkisiIdAndAdimSirasi(
-                        mevcutAdim.getIsAkisiId(),
-                        mevcutAdim.getAdimSirasi() + 1
-                );
+                adimRepository
+                        .findFirstByIsAkisiIdAndAdimSirasi(
+                                mevcutAdim.getIsAkisiId(),
+                                mevcutAdim.getAdimSirasi() + 1
+                        );
 
+        // workflow bitti
         if (sonrakiAdim == null) {
 
             Surec surec =
-                    surecRepository.findById(task.getSurecId()).orElseThrow();
+                    surecRepository
+                            .findById(task.getSurecId())
+                            .orElseThrow(() -> new RuntimeException("Süreç bulunamadı"));
 
             surec.setDurum("TAMAMLANDI");
 
@@ -152,13 +184,16 @@ public class WorkflowService {
         }
 
         Surec surec =
-                surecRepository.findById(task.getSurecId()).orElseThrow();
+                surecRepository
+                        .findById(task.getSurecId())
+                        .orElseThrow(() -> new RuntimeException("Süreç bulunamadı"));
 
         taskOlustur(surec, sonrakiAdim);
     }
-    public List<KullaniciTalepResponse> kullaniciTalepleri(Long kullaniciId){
 
+
+    // kullanıcının oluşturduğu talepler
+    public List<KullaniciTalepResponse> kullaniciTalepleri(Long kullaniciId) {
         return taskRepository.kullaniciTalepleri(kullaniciId);
     }
-
 }

@@ -1,4 +1,5 @@
 package com.example.workflowengine.controller;
+import com.example.workflowengine.dto.GelenTalepResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.example.workflowengine.dto.KullaniciTalepResponse;
@@ -38,7 +39,7 @@ public class WorkflowController {
 
     // bana gelen talepler
     @GetMapping("/gelen")
-    public List<Task> gelen() {
+    public List<GelenTalepResponse> gelen() {
 
         Long kullaniciId = CurrentUser.id();
 

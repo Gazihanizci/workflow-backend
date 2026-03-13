@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface IsAkisiRepository extends JpaRepository<IsAkisi, Long> {
 
@@ -17,4 +18,6 @@ public interface IsAkisiRepository extends JpaRepository<IsAkisi, Long> {
            FROM IsAkisi i
            """)
     List<IsAkisiResponse> findAllIsAkislari();
+    Optional<IsAkisi> findByIsTuruId(Long isTuruId);
+
 }
