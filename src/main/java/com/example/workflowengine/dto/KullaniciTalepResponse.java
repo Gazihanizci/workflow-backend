@@ -7,7 +7,7 @@ public class KullaniciTalepResponse {
 
     private Long taskId;
     private String taskDurum;
-
+    private String aciklama;
     private String isTuruAdi;
     private String yorum;
 
@@ -17,7 +17,9 @@ public class KullaniciTalepResponse {
             Long taskId,
             String taskDurum,
             String isTuruAdi,
-            String yorum
+            String yorum,
+            String aciklama   // 🔥 EKLENDİ
+
     ) {
         this.surecId = surecId;
         this.surecDurum = surecDurum;
@@ -38,4 +40,7 @@ public class KullaniciTalepResponse {
     public String getIsTuruAdi() { return isTuruAdi; }
 
     public String getYorum() { return yorum; }
+    public String getAciklama() {
+        return aciklama;
+    }
 }

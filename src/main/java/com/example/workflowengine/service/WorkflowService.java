@@ -36,13 +36,15 @@ public class WorkflowService {
     }
 
     // süreç başlat
-    public Surec baslat(Long kullaniciId, Long isTuruId) {
+    public Surec baslat(Long kullaniciId, Long isTuruId, String aciklama) {
 
         Surec surec = new Surec();
         surec.setIsTuruId(isTuruId);
         surec.setBaslatanKullaniciId(kullaniciId);
         surec.setDurum("DEVAM");
         surec.setOlusturmaTarihi(LocalDateTime.now());
+
+        surec.setAciklama(aciklama); // 🔥 EKLENDİ
 
         surecRepository.save(surec);
 

@@ -50,7 +50,16 @@ public class Surec {
     public LocalDateTime getOlusturmaTarihi() {
         return olusturmaTarihi;
     }
+    @Column(name = "aciklama")
+    private String aciklama;
 
+    public String getAciklama() {
+        return aciklama;
+    }
+
+    public void setAciklama(String aciklama) {
+        this.aciklama = aciklama;
+    }
     public void setOlusturmaTarihi(LocalDateTime olusturmaTarihi) {
         this.olusturmaTarihi = olusturmaTarihi;
     }
